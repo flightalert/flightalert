@@ -1,4 +1,5 @@
 
+
 # FlightAlert
 
 FlightAlert monitors nearby aircraft and sends notifications based on your configuration.
@@ -14,6 +15,9 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
 
 - Docker
 - ADSB-Ultrafeeder instance with json position output port 30047 accessible (https://github.com/sdr-enthusiasts/docker-adsb-ultrafeeder)
+	- Forward port 30047 from your ultrafeeder docker configuration
+	- Verify this is working by using `nc <ultrafeeder_host> 30047`
+		- [Netcat](https://netcat.sourceforge.net/)
 
 ### Steps
 
@@ -25,7 +29,7 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
    ```
 
 2. **Run with Docker Compose**
-   Create a `docker-compose.yml` file in the directory with the required environment variables defined directly:
+   Create a `docker-compose.yml` file:
 
    ```yaml
     services:
@@ -36,8 +40,6 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
           ULTRAFEEDER_HOST: "<your_ultrafeeder_host>"
           APPRISE_NOTIFY_URLS: "<your_apprise_notify_urls>"
         volumes:
-          #Required for passing in your .env options
-          - ./.env:/app/.env
           #Persistent cache storage
           - ./.my-storage:/app/.my-storage
         restart: unless-stopped
@@ -56,6 +58,8 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
 
    ```
 
+   Fill out the environment variables using the table below as your guide.
+
    Optional: you can still use a `.env` file for additional optional environment variables and reference it with `env_file`:
 
    ```yaml
@@ -67,16 +71,6 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
 
    ```bash
    docker compose up -d
-   ```
-
-   Or, run directly with Docker using the required environment variables inline:
-
-   ```bash
-   docker run -d --name flightalert \
-     -e RECEIVER_HOST="<your_receiver_host>" \
-     -e ULTRAFEEDER_HOST="<your_ultrafeeder_host>" \
-     -e APPRISE_NOTIFY_URLS="<your_apprise_notify_urls>" \
-     ghcr.io/flightalert/flightalert:latest
    ```
 
 ---
