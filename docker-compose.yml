@@ -1,0 +1,24 @@
+services:
+  flightalert:
+    build:
+      context: .
+    env_file:
+      - .env
+    ports:
+      - 48080:8080
+    volumes:
+      - ./.my-storage:/app/.my-storage
+      - ./.env:/app/.env
+    restart: unless-stopped
+  apprise:
+    container_name: apprise
+    image: caronc/apprise:latest
+    ports:
+      - 8000:8000
+    environment:
+      - APPRISE_STATEFUL_MODE=simple
+      - APPRISE_WORKER_COUNT=1
+    volumes:
+      - ./apprise/config:/config
+      - ./apprise/plugin:/plugin
+      - ./apprise/attach:/attach

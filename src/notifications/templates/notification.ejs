@@ -1,0 +1,23 @@
+<% if(flight.services?.flightAware?.from?.location && flight.services?.flightAware?.to?.location) { %>
+<%= flight.direction %>: <%= flight.services?.flightAware?.from?.location ?? 'No From' %> -> <%= flight.services?.flightAware?.to?.location ?? 'No To' %>
+<% } else { %>
+<% if(flight.services?.flightAware?.blocked) { %>
+<%= flight.direction %>: Blocked
+<% } else { %>
+<%= flight.direction %>: No Route
+<% } %>
+<% } %>
+
+<% if(flight.callsign) { %>
+Callsign: <%= flight.callsign %>
+<% } %>
+
+<% if(flight.flightUrl) { %>
+[Info](<%= flight.flightUrl + ')' %>
+<% } %>
+
+[Map](http://flightaware.com)
+
+<% if(flight.services?.flightAware?.planeImage) { %>
+![](<%= flight.services.flightAware.planeImage %>)
+<% } %>

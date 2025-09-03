@@ -1,0 +1,39 @@
+{
+  "name": "flightalert",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "hot": "tsx watch src/index.ts",
+    "build": "tsc && tsc-alias && cpy src/notifications/templates/* dist/notifications/templates --flat",
+    "start": "node dist/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@js-joda/core": "^5.6.5",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "ejs": "^3.1.10",
+    "haversine": "^1.1.1",
+    "jsonrepair": "^3.12.0",
+    "net": "^1.0.2",
+    "node-persist": "^4.0.4",
+    "p-queue": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/dotenv": "^6.1.1",
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.3",
+    "@types/haversine": "^1.1.8",
+    "@types/node": "^22.15.3",
+    "@types/node-persist": "^3.1.8",
+    "cpy-cli": "^6.0.0",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
