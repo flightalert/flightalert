@@ -34,7 +34,7 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
    ```yaml
     services:
       flightalert:
-          image: ghcr.io/flightalert/flightalert:latest
+        image: ghcr.io/flightalert/flightalert:latest
         environment:
           RECEIVER_HOST: "<your_receiver_host>"
           ULTRAFEEDER_HOST: "<your_ultrafeeder_host>"
