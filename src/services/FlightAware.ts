@@ -43,8 +43,7 @@ export class FlightAware implements IService {
         }
         if(flightAwareCheck?.error) {
             flightAware = {
-                error: flightAwareCheck.error,
-                'useCache': flightAwareCheck?.useCache,
+                error: flightAwareCheck.error
             }
         }
         return flightAware;
