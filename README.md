@@ -102,7 +102,7 @@ FlightAlert is configured via environment variables. Required variables must be 
 | `SOCKET_MAX_RETRIES`    | Maximum number of socket reconnection attempts before failing.                                                                               | ❌        | `5`                            |
 | `SERVICES`              | Comma-separated list of services for retrieving flight source/destination. Valid options: `flightaware`, `adsbdb`.                           | ❌        | `flightaware`                  |
 | `SERVICES_ALWAYS_CHECK` | Retrieve source/destination for **every** message (`true`), or only when `NOTIFY_DISTANCE` / `NOTIFY_ALTITUDE` thresholds are met (`false`). | ❌        | `false`                        |
-| `APPRISE_API_URL`       | Apprise API URL for sending notifications. Defaults to internal service, but can be overridden.                                              | ❌        | `http://localhost:8000/notify` |
+| `APPRISE_API_URL`       | Apprise API URL for sending notifications. Defaults to internal service, but can be overridden.                                              | ❌        | `http://apprise:8000/notify` |
 | `LOG_LEVEL`             | Logging level: `DEBUG` (all messages), `INFO` (only notifications), or `ERROR` (only errors).                                                | ❌        | `INFO`                         |
 
 ## Custom Notification Message
