@@ -55,6 +55,7 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
           - ./apprise/config:/config
           - ./apprise/plugin:/plugin
           - ./apprise/attach:/attach
+        restart: unless-stopped
 
    ```
 
@@ -106,6 +107,8 @@ FlightAlert is configured via environment variables. Required variables must be 
 | `LOG_LEVEL`             | Logging level: `DEBUG` (all messages), `INFO` (only notifications), or `ERROR` (only errors).                                                | ❌        | `INFO`                         |
 
 ## Custom Notification Message
+
+### Message Body
 If you would like to customize the notification message you receive, you can add the following volume to your docker-compose file.
 `- ./notification.ejs:/app/dist/notifications/templates/notification.ejs`
 
@@ -317,6 +320,11 @@ If there is an error the output will just be error:
     }
 }
 ```
+### Message Title
+If you would like to customize the notification title, you can add the following volume to your docker-compose file.
+`- ./title.ejs:/app/dist/notifications/templates/title.ejs`
+
+Message title receives the same `flight` JSON object. The `env` key (development/production) is available in case you want to display a different title during development.
 
 ## Funding
 

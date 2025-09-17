@@ -106,14 +106,17 @@ const setupReceiverData = async () => {
     }
 }
 
-const setupNotificationTemplate = async () => {
+const setupTemplates = async () => {
     const modulePath = dirname(fileURLToPath(import.meta.url));
-    const filePath = resolve(modulePath, 'notifications/templates/notification.ejs');
-    NotificationManager.compileTemplate(filePath);
+    const titleTemplateFilePath = resolve(modulePath, 'notifications/templates/title.ejs');
+    NotificationManager.addTemplate('title', titleTemplateFilePath);
+
+    const bodyTemplateFilePath = resolve(modulePath, 'notifications/templates/notification.ejs');
+    NotificationManager.addTemplate('body', bodyTemplateFilePath);
 }
 
 const init = async () => {
-    await setupNotificationTemplate();
+    await setupTemplates();
     await setupReceiverData();
     await ServiceManager.init(process.env.SERVICES);
     await setupEventListeners();
