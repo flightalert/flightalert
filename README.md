@@ -55,6 +55,7 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
           - ./apprise/config:/config
           - ./apprise/plugin:/plugin
           - ./apprise/attach:/attach
+        restart: unless-stopped
 
    ```
 
