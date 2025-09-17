@@ -22,3 +22,4 @@ services:
       - ./apprise/config:/config
       - ./apprise/plugin:/plugin
       - ./apprise/attach:/attach
+    restart: unless-stopped
