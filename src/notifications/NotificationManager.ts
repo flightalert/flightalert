@@ -34,8 +34,8 @@ class NotificationManager {
         try {
             const data: Record<string, any> = {
                 urls: process.env.APPRISE_NOTIFY_URLS,
-                title: renderedTitleTemplate,
-                body: renderedBodyTemplate,
+                title: renderedTitleTemplate.trim(),
+                body: renderedBodyTemplate.trim(),
                 type: 'info',
             };
 
