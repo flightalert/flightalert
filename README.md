@@ -320,11 +320,16 @@ If there is an error the output will just be error:
     }
 }
 ```
+
 ### Message Title
 If you would like to customize the notification title, you can add the following volume to your docker-compose file.
 `- ./title.ejs:/app/dist/notifications/templates/title.ejs`
 
-Message title receives the same `flight` JSON object. The `env` key (development/production) is available in case you want to display a different title during development.
+Message title receives the same `flight` JSON object as the body. The `env` key (development/production) is available in case you want to display a different title during development.
+Add the following to the content of your title.ejs file. This is the default notification title:
+```text
+<%= (env === 'development' ? 'Local ' : '') + 'Flight' %>
+```
 
 ## Funding
 
