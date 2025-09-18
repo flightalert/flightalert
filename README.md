@@ -327,7 +327,7 @@ If you would like to customize the notification title, you can add the following
 
 Message title receives the same `flight` JSON object as the body. The `env` key (development/production) is available in case you want to display a different title during development.
 Add the following to the content of your title.ejs file. This is the default notification title:
-```json
+```text
 <%= (env === 'development' ? 'Local ' : '') + 'Flight' %>
 ```
 
