@@ -2,8 +2,8 @@
 
 # FlightAlert
 
-FlightAlert monitors nearby aircraft and sends notifications based on your configuration. When an aircraft is within a certain distance an altitude, you will receive a notification. The notifications are configurable by overriding the template used in the container.
-It supports ADS-B Ultrafeeder receivers, and integrates with [Apprise](https://github.com/caronc/apprise) for notifications.
+FlightAlert monitors nearby aircraft and sends notifications based on your configuration. When an aircraft is within a certain distance and altitude, you will receive a notification. The notifications are configurable by overriding templates.
+Support for ADS-B Ultrafeeder receivers, and integrates with [Apprise](https://github.com/caronc/apprise) for notifications.
 
 ---
 
