@@ -2,8 +2,8 @@
 
 # FlightAlert
 
-FlightAlert monitors nearby aircraft and sends notifications based on your configuration. When an aircraft is within a certain distance an altitude, you will receive a notification. The notifications are configurable by overriding the template used in the container.
-It supports ADS-B Ultrafeeder receivers, and integrates with [Apprise](https://github.com/caronc/apprise) for notifications.
+FlightAlert monitors nearby aircraft and sends notifications based on your configuration. When an aircraft is within a certain distance and altitude, you will receive a notification. The notifications are configurable by overriding templates.
+Support for ADS-B Ultrafeeder receivers, and integrates with [Apprise](https://github.com/caronc/apprise) for notifications.
 
 ---
 
@@ -55,6 +55,7 @@ FlightAlert runs as a pre-built Docker image. Follow these steps to get started:
           - ./apprise/config:/config
           - ./apprise/plugin:/plugin
           - ./apprise/attach:/attach
+        restart: unless-stopped
 
    ```
 
@@ -106,6 +107,8 @@ FlightAlert is configured via environment variables. Required variables must be 
 | `LOG_LEVEL`             | Logging level: `DEBUG` (all messages), `INFO` (only notifications), or `ERROR` (only errors).                                                | ❌        | `INFO`                         |
 
 ## Custom Notification Message
+
+### Message Body
 If you would like to customize the notification message you receive, you can add the following volume to your docker-compose file.
 `- ./notification.ejs:/app/dist/notifications/templates/notification.ejs`
 
@@ -316,6 +319,16 @@ If there is an error the output will just be error:
         "error": "<error_message>"
     }
 }
+```
+
+### Message Title
+If you would like to customize the notification title, you can add the following volume to your docker-compose file.
+`- ./title.ejs:/app/dist/notifications/templates/title.ejs`
+
+Message title receives the same `flight` JSON object as the body. The `env` key (development/production) is available in case you want to display a different title during development.
+Add the following to the content of your title.ejs file. This is the default notification title:
+```text
+<%= (env === 'development' ? 'Local ' : '') + 'Flight' %>
 ```
 
 ## Funding
