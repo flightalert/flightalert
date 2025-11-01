@@ -14,7 +14,11 @@ import ServiceManager from './services/ServiceManager';
 import NotificationManager from './notifications/NotificationManager';
 
 dotenv.config();
-await storage.init({ dir: './.my-storage' })
+await storage.init({
+    dir: './.my-storage',
+    ttl: true,
+    forgiveParseErrors: true,
+})
 Logger.setLevel(process.env.LOG_LEVEL);
 
 let retrying = false;
