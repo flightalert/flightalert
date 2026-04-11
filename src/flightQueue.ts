@@ -1,4 +1,4 @@
-import eventEmitter, { PROCESSED_FLIGHT, PROCESSING_FLIGHT, QUEUED_FLIGHT } from './events';
+import eventEmitter, { NOTIFIED_FLIGHT, PROCESSED_FLIGHT, PROCESSING_FLIGHT, QUEUED_FLIGHT } from './events';
 import receiver from './models/receiver';
 import { Aircraft } from './models/aircraft';
 import PQueue from 'p-queue';
@@ -7,12 +7,16 @@ import { Instant } from '@js-joda/core'
 import Logger from './logger';
 import ServiceManager from './services/ServiceManager';
 import NotificationManager from './notifications/NotificationManager';
+import metrics from './metrics';
 
 let totalProcessed = 0;
+let totalNotified = 0;
+let totalFailed = 0;
 const queue = new PQueue({ concurrency: 1 });
 
 queue.on('error', error => {
 	Logger.error(error);
+    totalFailed++;
 });
 
 const processFlight = async (aircraft: Record<string, any>) => {
@@ -61,9 +65,14 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
     aircraftModel.setUpdatedAt();
 
     if(notify) {
+        await metrics.increment('flight_alert_flight_notification_totals', {
+            'departure_city': aircraftModel.services?.flightAware?.from?.location
+        });
+
         const notified = await NotificationManager.notify(aircraftModel);
         if(notified) {
             Logger.info('Notified: ' + aircraftModel.callsign + '\n\n')
+            totalNotified++;
         }
 
         aircraftModel.lastNotified = Instant.now().epochSecond();
@@ -75,6 +84,8 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
     totalProcessed++;
     eventEmitter.emit(PROCESSED_FLIGHT, aircraftModel);
 
+    eventEmitter.emit(NOTIFIED_FLIGHT, totalNotified);
+
     // flights.set(callsign, aircraftModel);
     return aircraftModel;
 }
@@ -82,5 +93,6 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
 export {
     processFlight,
     queue,
-    totalProcessed
+    totalProcessed,
+    totalNotified,
 };
