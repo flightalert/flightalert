@@ -30,8 +30,8 @@ There are no tests in this project.
 
 1. **TCP Socket** (`src/index.ts`) — connects to ADSB-Ultrafeeder on `ULTRAFEEDER_HOST:ULTRAFEEDER_PORT` (default 30047), receives raw JSON aircraft position data, uses `jsonrepair` to handle partial/malformed JSON frames
 2. **Flight Queue** (`src/flightQueue.ts`) — serializes processing via `p-queue` (concurrency 1). For each aircraft: calculates distance/direction from receiver, checks `shouldNotify()`, optionally enriches with service data, sends notification if criteria met
-3. **Notification** (`src/notifications/NotificationManager.ts`) — renders EJS templates and POSTs to Apprise API
-4. **Event Bus** (`src/events.ts`) — singleton `EventEmitter` used to broadcast lifecycle events (`QUEUED_FLIGHT`, `PROCESSING_FLIGHT`, `PROCESSED_FLIGHT`, `NOTIFIED_FLIGHT`, `RECEIVER_SETUP`) to the optional web server
+3. **Notification** (`src/notifications/NotificationManager.ts`) — renders EJS templates and POSTs to Apprise API. Errors are caught in `flightQueue.ts` so a failed notification logs the error and increments `totalFailed` without crashing the queue.
+4. **Event Bus** (`src/events.ts`) — singleton `EventEmitter` used to broadcast lifecycle events (`QUEUED_FLIGHT`, `PROCESSING_FLIGHT`, `PROCESSED_FLIGHT`, `NOTIFIED_FLIGHT`, `FAILED_FLIGHT`, `RECEIVER_SETUP`) to the optional web server
 
 ### Key Models
 
@@ -51,13 +51,19 @@ Configured via `SERVICES` env var (comma-separated). Only called when notify cri
 
 ### Optional Web Server
 
-Enabled via `APP_SERVER_ENABLED=true`. Runs Express + Socket.IO on `APP_PORT`:
+Enabled via `APP_SERVER_ENABLED=true`. Runs Express + Socket.IO on `APP_PORT` (`src/servers/webServer.ts`):
 - `GET /` — EJS dashboard
 - `GET /status` — health check
-- `GET /metrics` — Prometheus metrics (prom-client)
-- `GET /metrics_json` — same as JSON
 
 Socket.IO emits real-time events to connected clients using the same event bus.
+
+### Optional Metrics Server
+
+Enabled via `METRICS_SERVER_ENABLED=true`. Runs a minimal Express server on `METRICS_PORT` (default `9090`) (`src/servers/metricsServer.ts`):
+- `GET /metrics` — Prometheus metrics (prom-client)
+- `GET /metrics_json` — same metrics as JSON
+
+Intentionally separate from the web server so Prometheus can scrape without enabling the full dashboard.
 
 ### Persistence
 
@@ -71,7 +77,7 @@ Socket.IO emits real-time events to connected clients using the same event bus.
 
 Required: `RECEIVER_HOST`, `ULTRAFEEDER_HOST`, `APPRISE_NOTIFY_URLS`
 
-Key optional: `NOTIFY_DISTANCE` (nm, default 0.5), `NOTIFY_ALTITUDE` (ft, default 3000), `SERVICES` (default `"flightaware"`), `LOG_LEVEL` (DEBUG/INFO/ERROR, default INFO), `APP_SERVER_ENABLED`, `APP_PORT`
+Key optional: `NOTIFY_DISTANCE` (nm, default 0.5), `NOTIFY_ALTITUDE` (ft, default 3000), `SERVICES` (default `"flightaware"`), `LOG_LEVEL` (DEBUG/INFO/ERROR, default INFO), `APP_SERVER_ENABLED`, `APP_PORT`, `METRICS_SERVER_ENABLED`, `METRICS_PORT` (default 9090)
 
 See `.env.example` for the full list with descriptions.
 
