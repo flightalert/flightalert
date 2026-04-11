@@ -31,28 +31,24 @@ class NotificationManager {
             throw new Error('Issue rendering body template for notification.');
         }
 
-        try {
-            const data: Record<string, any> = {
-                urls: process.env.APPRISE_NOTIFY_URLS,
-                title: renderedTitleTemplate.trim(),
-                body: renderedBodyTemplate.trim(),
-                type: 'info',
-            };
+        const data: Record<string, any> = {
+            urls: process.env.APPRISE_NOTIFY_URLS,
+            title: renderedTitleTemplate.trim(),
+            body: renderedBodyTemplate.trim(),
+            type: 'info',
+        };
 
-            await axios.post(
-                process.env.APPRISE_API_URL,
-                data,
-                {
-                    'headers': {
-                        'Content-Type': 'application/json'
-                    }
+        await axios.post(
+            process.env.APPRISE_API_URL,
+            data,
+            {
+                'headers': {
+                    'Content-Type': 'application/json'
                 }
-            );
+            }
+        );
 
-            return true;
-        } catch (e: any) {
-            throw e;
-        }
+        return true;
     }
 }
 
