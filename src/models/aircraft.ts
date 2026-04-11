@@ -3,6 +3,8 @@ import { ChronoUnit, DateTimeFormatter, Instant, LocalDateTime } from '@js-joda/
 export interface IFlight {
     id?: number
     alt_baro?: string
+    lat?: string
+    lon?: string
     direction?: string
     notify?: boolean
     notifyReason: string
@@ -227,6 +229,8 @@ export class Aircraft {
         const json: IFlight = {
             id: this?.id,
             alt_baro: this.alt_baro,
+            lat: this.lat,
+            lon: this.lon,
             direction: this.cardinalDirection ?? 'Missing data',
             notify: this.notify,
             notifyReason: this.notifyReason,
