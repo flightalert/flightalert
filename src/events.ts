@@ -10,6 +10,7 @@ const PROCESSED_FLIGHTS = 'processed_flights';
 
 const QUEUED_FLIGHT = 'queued_flight';
 const NOTIFIED_FLIGHT = 'notified_flight';
+const FAILED_FLIGHT = 'failed_flight';
 
 const events = {
     'receiver_setup': RECEIVER_SETUP,
@@ -20,7 +21,8 @@ const events = {
     'processed_flights': PROCESSED_FLIGHTS,
 
     'queued_flight': QUEUED_FLIGHT,
-    'notified_flight': NOTIFIED_FLIGHT
+    'notified_flight': NOTIFIED_FLIGHT,
+    'failed_flight': FAILED_FLIGHT,
 }
 
 const emitter = new EventEmitter();
@@ -35,5 +37,6 @@ export {
     PROCESSED_FLIGHTS,
     QUEUED_FLIGHT,
     NOTIFIED_FLIGHT,
+    FAILED_FLIGHT,
     events
 }

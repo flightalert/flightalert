@@ -1,4 +1,4 @@
-import eventEmitter, { NOTIFIED_FLIGHT, PROCESSED_FLIGHT, PROCESSING_FLIGHT, QUEUED_FLIGHT } from './events';
+import eventEmitter, { FAILED_FLIGHT, NOTIFIED_FLIGHT, PROCESSED_FLIGHT, PROCESSING_FLIGHT, QUEUED_FLIGHT } from './events';
 import receiver from './models/receiver';
 import { Aircraft } from './models/aircraft';
 import PQueue from 'p-queue';
@@ -15,8 +15,9 @@ let totalFailed = 0;
 const queue = new PQueue({ concurrency: 1 });
 
 queue.on('error', error => {
-	Logger.error(error);
+    Logger.error(error);
     totalFailed++;
+    eventEmitter.emit(FAILED_FLIGHT, totalFailed);
 });
 
 const processFlight = async (aircraft: Record<string, any>) => {
@@ -24,8 +25,8 @@ const processFlight = async (aircraft: Record<string, any>) => {
 }
 
 const enqueueFlight = async (aircraft: Record<string, any>) => {
-    eventEmitter.emit(QUEUED_FLIGHT, aircraft);
     queue.add(() => workFlight(aircraft));
+    eventEmitter.emit(QUEUED_FLIGHT, aircraft);
 }
 
 const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
@@ -69,15 +70,20 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
             'departure_city': aircraftModel.services?.flightAware?.from?.location
         });
 
-        const notified = await NotificationManager.notify(aircraftModel);
-        if(notified) {
-            Logger.info('Notified: ' + aircraftModel.callsign + '\n\n')
-            totalNotified++;
-        }
-
-        aircraftModel.lastNotified = Instant.now().epochSecond();
-        if(aircraftModel?.callsign) {
-            await cache.set(aircraftModel.callsign, aircraftModel.lastNotified);
+        try {
+            const notified = await NotificationManager.notify(aircraftModel);
+            if(notified) {
+                Logger.info('Notified: ' + aircraftModel.callsign + '\n\n')
+                totalNotified++;
+                aircraftModel.lastNotified = Instant.now().epochSecond();
+                if(aircraftModel?.callsign) {
+                    await cache.set(aircraftModel.callsign, aircraftModel.lastNotified);
+                }
+            }
+        } catch (e: any) {
+            Logger.error('Failed to notify for ' + aircraftModel.callsign + ': ' + (e?.message ?? e));
+            totalFailed++;
+            eventEmitter.emit(FAILED_FLIGHT, totalFailed);
         }
     }
 
@@ -95,4 +101,5 @@ export {
     queue,
     totalProcessed,
     totalNotified,
+    totalFailed,
 };
