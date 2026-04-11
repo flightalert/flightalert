@@ -2,6 +2,10 @@ declare global {
     namespace NodeJS {
         interface ProcessEnv {
             APP_ENV: string;
+            APP_SERVER_ENABLED: string;
+            APP_PORT: number;
+            METRICS_SERVER_ENABLED: string;
+            METRICS_PORT: number;
             NOTIFY_DISTANCE: number;
             NOTIFY_ALTITUDE: number;
             FLIGHT_LINK_HOST: string;
