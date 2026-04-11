@@ -12,6 +12,8 @@ import { Aircraft } from './models/aircraft';
 import Logger from './logger';
 import ServiceManager from './services/ServiceManager';
 import NotificationManager from './notifications/NotificationManager';
+import { setupWebServer } from './servers/webServer';
+import { setupMetricsServer } from './servers/metricsServer';
 import metrics from './metrics';
 
 dotenv.config();
@@ -128,6 +130,14 @@ const init = async () => {
     await ServiceManager.init(process.env.SERVICES);
     await setupEventListeners();
     await processWithDataFromSocket();
+
+    if(process.env.APP_SERVER_ENABLED === 'true') {
+        await setupWebServer()
+    }
+
+    if(process.env.METRICS_SERVER_ENABLED === 'true') {
+        await setupMetricsServer()
+    }
 }
 
 await init();
