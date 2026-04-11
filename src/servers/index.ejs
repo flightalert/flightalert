@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" class="transition-colors duration-300">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlightAlert Dashboard</title>
+
+    <!-- Tailwind v3 CDN (supports darkMode: class) -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+        window.RECEIVER_HOST = "<%= RECEIVER_HOST %>";
+        window.TOTAL_PROCESSED = <%- TOTAL_PROCESSED %>;
+        window.TOTAL_NOTIFIED = <%- TOTAL_NOTIFIED %>;
+        window.RECEIVER_DATA = <%- RECEIVER_DATA %>;
+    </script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+
+    <!-- Theme bootstrap -->
+    <script>
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+    </script>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+    <div class="max-w-7xl mx-auto p-6 space-y-6">
+        <!-- Header -->
+        <header class="flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <img src="public/logos/logo_white.png" class="dark:block hidden h-10" alt="FlightAlert Logo" />
+                <img src="public/logos/logo.png" class="dark:hidden h-10" alt="FlightAlert Logo" />
+                <h1 class="text-2xl font-semibold tracking-tight">FlightAlert Dashboard</h1>
+                <span id="connectionStatus"
+                    class="ml-2 px-2 py-0.5 text-xs rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300">CONNECTING...</span>
+            </div>
+            <button id="toggleTheme"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition">🌗
+                Theme</button>
+        </header>
+
+        <!-- Stats -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 text-center">
+                <h2 class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Current Aircraft</h2>
+                <div id="currentAircraftCount" class="text-3xl font-bold text-blue-600">0</div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 text-center">
+                <h2 class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Messages Received</h2>
+                <div id="totalMessages" class="text-3xl font-bold text-green-500">0</div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 text-center">
+                <h2 class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Notifications Sent
+                </h2>
+                <div id="notificationCount" class="text-3xl font-bold text-purple-500">0</div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+                <h2 class="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 text-center mb-4">Messages
+                    in Queue</h2>
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <div class="text-xs text-gray-400">Current</div>
+                        <div id="queueCount" class="text-2xl font-bold text-yellow-500">0</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400">Processed</div>
+                        <div id="queueProcessed" class="text-2xl font-bold text-gray-600 dark:text-gray-300">0</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400">Failed</div>
+                        <div id="queueFailed" class="text-2xl font-bold text-red-500">0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Content -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-semibold">Current Aircraft</h2><span id="currentAircraftBadge"
+                        class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Showing
+                        0 of 0</span>
+                </div>
+                <div
+                    class="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600 p-3 overflow-y-auto max-h-[420px]">
+                    <div id="currentAircraftEmpty"
+                        class="h-full flex items-center justify-center text-sm text-gray-400">No aircraft data available
+                    </div>
+                    <div id="currentAircraft" class="space-y-3 text-sm hidden"></div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-semibold">Real-Time Messages</h2><span id="messagesBadge"
+                        class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Showing
+                        0 of 0</span>
+                </div>
+                <div
+                    class="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600 p-3 overflow-y-auto max-h-[420px]">
+                    <div id="messagesEmpty" class="h-full flex items-center justify-center text-sm text-gray-400">No
+                        messages received yet</div>
+                    <div id="messages" class="space-y-3 text-sm hidden"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Theme toggle
+        document.getElementById('toggleTheme').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        });
+
+        function renderMessage(msg, prev, context) {
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-xl border shadow-sm transition ${msg.notify ? 'bg-green-50 dark:bg-green-900/40 border-green-400' : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`;
+
+            const enableFlash = context === 'aircraft';
+            const altChanged = enableFlash && prev && prev.alt_baro !== msg.alt_baro;
+            const dirChanged = enableFlash && prev && prev.direction !== msg.direction;
+            const distChanged = enableFlash && prev && prev.distanceFromReceiver !== msg.distanceFromReceiver;
+            const distDisplay = msg.distanceFromReceiver != null ? msg.distanceFromReceiver.toFixed(2) : 'N/A';
+
+            card.innerHTML = `
+        <div class="flex justify-between gap-3">
+          <div>
+            <a href="${msg.flightUrl}" target="_blank" class="font-semibold text-blue-600 dark:text-blue-400">${msg.callsign}</a>
+            <div class="text-xs text-gray-500">
+              Alt <span class="${altChanged ? 'value-update' : ''}">${msg.alt_baro}</span> ft ·
+              <span class="${dirChanged ? 'value-update' : ''}">${msg.direction}</span> ·
+              <span class="${distChanged ? 'value-update' : ''}">${distDisplay}</span> mi
+            </div>
+            <div class="text-xs text-gray-500">Updated ${msg.updatedAt}</div>
+            ${msg.notify ? '<div class="mt-1 text-xs font-semibold text-green-600">🔔 Notification Triggered</div>' : ''}
+          </div>
+          ${msg.services?.flightAware?.planeImage ? `<img src="${msg.services.flightAware.planeImage}" class="w-16 h-12 rounded object-cover"/>` : ''}
+        </div>`;
+            return card;
+        }
+
+        // DOM references
+        const messages = document.getElementById('messages');
+        const messagesBadge = document.getElementById('messagesBadge');
+        const messagesEmpty = document.getElementById('messagesEmpty');
+        const currentAircraft = document.getElementById('currentAircraft');
+        const currentAircraftBadge = document.getElementById('currentAircraftBadge');
+        const currentAircraftEmpty = document.getElementById('currentAircraftEmpty');
+
+        // Stat DOM references — all explicit, no implicit browser globals
+        const currentAircraftCountEl = document.getElementById('currentAircraftCount');
+        const notificationCountEl = document.getElementById('notificationCount');
+        const totalMessagesEl = document.getElementById('totalMessages');
+        const queueCountEl = document.getElementById('queueCount');
+        const queueProcessedEl = document.getElementById('queueProcessed');
+        const queueFailedEl = document.getElementById('queueFailed');
+        const connectionStatus = document.getElementById('connectionStatus');
+
+        const socket = io();
+
+        // Server-authoritative counters — seeded from SSR snapshot for pre-connect display
+        let serverProcessed = window.TOTAL_PROCESSED;
+        let serverNotified = window.TOTAL_NOTIFIED;
+
+        const aircraftMap = new Map(); // unique by callsign
+
+        function updateStats() {
+            currentAircraftCountEl.textContent = aircraftMap.size;
+            notificationCountEl.textContent = serverNotified;
+            totalMessagesEl.textContent = serverProcessed;
+        }
+
+        function updateBadges() {
+            const visibleMessages = messages.children.length;
+            messagesBadge.textContent = `Showing ${visibleMessages} of ${serverProcessed}`;
+
+            const visibleAircraft = currentAircraft.children.length;
+            currentAircraftBadge.textContent = `Showing ${visibleAircraft} of ${aircraftMap.size}`;
+        }
+
+        // Set SSR seed values before socket connects
+        queueProcessedEl.textContent = serverProcessed;
+        notificationCountEl.textContent = serverNotified;
+
+        // Socket connection status
+        socket.on('connect', () => {
+            connectionStatus.textContent = 'LIVE';
+            connectionStatus.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300';
+            console.log('Socket.IO connected');
+        });
+
+        socket.on('disconnect', (reason) => {
+            connectionStatus.textContent = 'DISCONNECTED';
+            connectionStatus.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300';
+            console.warn('Socket.IO disconnected:', reason);
+        });
+
+        socket.on('connect_error', (error) => {
+            connectionStatus.textContent = 'ERROR';
+            connectionStatus.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300';
+            console.error('Socket.IO connection error:', error);
+        });
+
+        socket.on('reconnect_attempt', (attemptNumber) => {
+            connectionStatus.textContent = `RECONNECTING (${attemptNumber})...`;
+            connectionStatus.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300';
+            console.log('Socket.IO reconnection attempt:', attemptNumber);
+        });
+
+        socket.on('reconnect', (attemptNumber) => {
+            connectionStatus.textContent = 'LIVE';
+            connectionStatus.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300';
+            console.log('Socket.IO reconnected after', attemptNumber, 'attempts');
+        });
+
+        socket.on('reconnect_failed', () => {
+            connectionStatus.textContent = 'CONNECTION FAILED';
+            connectionStatus.className = 'ml-2 px-2 py-0.5 text-xs rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300';
+            console.error('Socket.IO reconnection failed');
+        });
+
+        // On connect/reconnect the server pushes current state — sync all counters
+        socket.on('state', ({ processed, notified, failed, queued }) => {
+            serverProcessed = processed;
+            serverNotified = notified;
+            queueProcessedEl.textContent = processed;
+            queueFailedEl.textContent = failed;
+            queueCountEl.textContent = queued;
+            updateStats();
+            updateBadges();
+        });
+
+        socket.on('flight', msg => {
+            const prev = aircraftMap.get(msg.callsign);
+            aircraftMap.set(msg.callsign, msg);
+
+            messagesEmpty.classList.add('hidden');
+            messages.classList.remove('hidden');
+            currentAircraftEmpty.classList.add('hidden');
+            currentAircraft.classList.remove('hidden');
+
+            const mNode = renderMessage(msg, prev, 'realtime');
+            mNode.classList.add('animate-fade');
+            messages.prepend(mNode);
+            if (messages.children.length > 5) messages.lastChild.remove();
+
+            const existing = currentAircraft.querySelector(`[data-callsign="${msg.callsign}"]`);
+            const node = renderMessage(msg, prev, 'aircraft');
+            if (!prev) node.classList.add('animate-fade');
+            node.dataset.callsign = msg.callsign;
+            if (existing) existing.remove();
+            currentAircraft.prepend(node);
+
+            // Counts are updated by completed_flight / notified_flight — not here
+            updateBadges();
+        });
+
+        // Server-authoritative count updates
+        socket.on('completed_flight', v => {
+            serverProcessed = v;
+            queueProcessedEl.textContent = v;
+            updateStats();
+            updateBadges();
+        });
+
+        socket.on('notified_flight', v => {
+            serverNotified = v;
+            updateStats();
+        });
+
+        socket.on('failed_flight', v => {
+            queueFailedEl.textContent = v;
+        });
+
+        socket.on('queued_flight', v => {
+            queueCountEl.textContent = v;
+        });
+
+        // Polling config for current aircraft cleanup
+        const AIRCRAFT_POLL_INTERVAL = 5000; // 5s
+        const AIRCRAFT_ENDPOINT = '/data/aircraft.json';
+
+        async function pollCurrentAircraft() {
+            try {
+                const res = await fetch(window.RECEIVER_HOST + AIRCRAFT_ENDPOINT, { cache: 'no-store' });
+                if (!res.ok) throw new Error('Bad response');
+                const data = await res.json();
+                if (!Array.isArray(data.aircraft)) return;
+
+                const active = new Set(
+                    data.aircraft
+                        .map(a => a?.flight?.trim() ?? a?.r?.trim())
+                        .filter(Boolean)
+                );
+
+                // Collect callsigns to remove first to avoid mutation during iteration
+                const toRemove = [];
+                for (const callsign of aircraftMap.keys()) {
+                    if (!active.has(callsign)) {
+                        toRemove.push(callsign);
+                    }
+                }
+
+                toRemove.forEach(callsign => {
+                    const el = currentAircraft.querySelector(`[data-callsign="${callsign}"]`);
+                    if (el) el.remove();
+                    aircraftMap.delete(callsign);
+                });
+
+                if (aircraftMap.size === 0) {
+                    currentAircraft.classList.add('hidden');
+                    currentAircraftEmpty.classList.remove('hidden');
+                }
+
+                updateStats();
+                updateBadges();
+            } catch (err) {
+                console.warn('Aircraft poll failed', err);
+            }
+        }
+
+        setInterval(pollCurrentAircraft, AIRCRAFT_POLL_INTERVAL);
+
+        // Initialize display
+        updateStats();
+        updateBadges();
+    </script>
+
+    <style>
+        @keyframes valuePulse {
+            0% {
+                box-shadow: inset 0 -1.5em 0 rgba(34, 197, 94, 0.25);
+            }
+
+            100% {
+                box-shadow: inset 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        .value-update {
+            padding: 0 2px;
+            border-radius: 0.25rem;
+            animation: valuePulse 0.9s ease-out;
+        }
+
+        @keyframes fade {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .animate-fade {
+            animation: fade .25s ease-out;
+        }
+
+        /* Custom aircraft marker styling */
+        /* Custom aircraft marker styling */
+        .aircraft-marker {
+            background: transparent;
+            border: none;
+        }
+
+        .aircraft-icon {
+            transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transform-origin: 50% 50%;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+        }
+
+        /* Leaflet popup styling for dark mode */
+        .dark .leaflet-popup-content-wrapper,
+        .dark .leaflet-popup-tip {
+            background-color: #1f2937;
+            color: #f3f4f6;
+        }
+    </style>
+</body>
+
+</html>

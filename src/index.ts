@@ -6,12 +6,15 @@ import { jsonrepair } from 'jsonrepair'
 import net from 'net';
 import { processFlight } from './flightQueue';
 import { IService } from './services/Service';
-import eventEmitter, { PROCESSED_FLIGHT, PROCESSING_FLIGHT } from './events';
+import eventEmitter, { PROCESSED_FLIGHT, PROCESSING_FLIGHT, RECEIVER_SETUP } from './events';
 import receiver from './models/receiver';
 import { Aircraft } from './models/aircraft';
 import Logger from './logger';
 import ServiceManager from './services/ServiceManager';
 import NotificationManager from './notifications/NotificationManager';
+import { setupWebServer } from './servers/webServer';
+import { setupMetricsServer } from './servers/metricsServer';
+import metrics from './metrics';
 
 dotenv.config();
 await storage.init({
@@ -19,6 +22,7 @@ await storage.init({
     ttl: true,
     forgiveParseErrors: true,
 })
+await metrics.init();
 Logger.setLevel(process.env.LOG_LEVEL);
 
 let retrying = false;
@@ -70,8 +74,8 @@ const processWithDataFromSocket = async () => {
             );
 
         } catch (e: any) {
+            console.log(data.toString());
             Logger.error(e);
-            throw e;
         }
     });
 
@@ -108,6 +112,7 @@ const setupReceiverData = async () => {
         Logger.error('Issue setting up receiver data.');
         throw Error('Issue setting up receiver data.')
     }
+    eventEmitter.emit(RECEIVER_SETUP, receiver.receiverData);
 }
 
 const setupTemplates = async () => {
@@ -125,6 +130,14 @@ const init = async () => {
     await ServiceManager.init(process.env.SERVICES);
     await setupEventListeners();
     await processWithDataFromSocket();
+
+    if(process.env.APP_SERVER_ENABLED === 'true') {
+        await setupWebServer()
+    }
+
+    if(process.env.METRICS_SERVER_ENABLED === 'true') {
+        await setupMetricsServer()
+    }
 }
 
 await init();
