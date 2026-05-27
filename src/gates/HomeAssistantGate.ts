@@ -83,7 +83,10 @@ class HomeAssistantGate {
                     timeout: 5000,
                 }
             );
-            return response.data.state as string;
+
+            const data = response.data as Record<string, any>
+
+            return data.state as string;
         } catch (e: any) {
             Logger.warn(`[HA Gate] Could not fetch state for ${entityId}: ${e?.message ?? e}`);
             return null;
