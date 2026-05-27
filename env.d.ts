@@ -19,6 +19,11 @@ declare global {
             SERVICES: string;
             SERVICES_ALWAYS_CHECK: string;
             LOG_LEVEL: 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+            HA_ENABLED?: string;
+            HA_URL?: string;
+            HA_TOKEN?: string;
+            HA_GATE_ENTITIES?: string;
+            HA_POLL_INTERVAL?: string;
         }
     }
 }

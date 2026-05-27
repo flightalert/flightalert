@@ -8,6 +8,7 @@ import Logger from './logger';
 import ServiceManager from './services/ServiceManager';
 import NotificationManager from './notifications/NotificationManager';
 import metrics from './metrics';
+import haGate from './gates/HomeAssistantGate';
 
 let totalProcessed = 0;
 let totalNotified = 0;
@@ -53,7 +54,12 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
 
     const notify = await aircraftModel.shouldNotify();
 
-    //Only call service checks if notifying or explicitly set to always call services
+    const gateOpen = haGate.isOpen();
+    if (notify && !gateOpen) {
+        Logger.info(`[HA Gate] Suppressed notification for ${aircraftModel.callsign}`);
+    }
+
+    //Only call service checks if notifying (and gate is open) or explicitly set to always call services
     if((notify || process.env.SERVICES_ALWAYS_CHECK === 'true') && aircraftModel?.hex) {
         for await (const service of ServiceManager.services) {
             aircraftModel.setServices(
@@ -69,7 +75,9 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
         await metrics.increment('flight_alert_flight_notification_totals', {
             'departure_city': aircraftModel.services?.flightAware?.from?.location
         });
+    }
 
+    if(notify && gateOpen) {
         try {
             const notified = await NotificationManager.notify(aircraftModel);
             if(notified) {

@@ -4,10 +4,11 @@ import { createServer, Server as HttpServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Logger from '@/logger';
-import eventEmitter, { PROCESSED_FLIGHT, QUEUED_FLIGHT, NOTIFIED_FLIGHT, FAILED_FLIGHT, RECEIVER_SETUP } from '@/events';
+import eventEmitter, { PROCESSED_FLIGHT, QUEUED_FLIGHT, NOTIFIED_FLIGHT, FAILED_FLIGHT, RECEIVER_SETUP, GATE_STATE_CHANGED } from '@/events';
 import { Aircraft } from '@/models/aircraft';
 import { queue, totalProcessed, totalNotified, totalFailed } from '@/flightQueue';
 import receiver, { IReceiverData } from '@/models/receiver';
+import haGate from '@/gates/HomeAssistantGate';
 
 interface IServers {
     httpServer: HttpServer,
@@ -28,7 +29,9 @@ const setupWebServer = async (): Promise<IServers> => {
             RECEIVER_HOST: process.env.RECEIVER_HOST,
             TOTAL_PROCESSED: totalProcessed,
             TOTAL_NOTIFIED: totalNotified,
-            RECEIVER_DATA: JSON.stringify(receiver?.receiverData ?? {})
+            RECEIVER_DATA: JSON.stringify(receiver?.receiverData ?? {}),
+            GATE_ENABLED: haGate.isEnabled(),
+            GATE_OPEN: haGate.isOpen(),
         });
     });
 
@@ -47,6 +50,8 @@ const setupWebServer = async (): Promise<IServers> => {
             notified: totalNotified,
             failed: totalFailed,
             queued: queue.size,
+            gateEnabled: haGate.isEnabled(),
+            gateOpen: haGate.isOpen(),
         });
 
         if (receiver?.receiverData) {
@@ -90,6 +95,10 @@ const setupServerEventListeners = (io: Server) => {
 
     eventEmitter.on(FAILED_FLIGHT, async (totalFailed) => {
         io.emit('failed_flight', totalFailed);
+    });
+
+    eventEmitter.on(GATE_STATE_CHANGED, async (open: boolean) => {
+        io.emit('gate_state', { open });
     });
 }
 

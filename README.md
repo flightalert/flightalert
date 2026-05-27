@@ -61,6 +61,7 @@ Additional optional variables are in the [full environment variable reference](#
 
 - [Web Dashboard](#web-dashboard) — live flight counts and receiver info (EJS + Socket.IO)
 - [Prometheus Metrics](#prometheus-metrics) — Prometheus-compatible metrics endpoint
+- [Home Assistant Gate](#home-assistant-gate) — pause notifications based on Home Assistant entity states
 - [Custom Notifications](#custom-notifications) — override the notification message and title templates
 
 ---
@@ -94,6 +95,11 @@ Additional optional variables are in the [full environment variable reference](#
 | `APP_PORT`               | Port for the web dashboard server.                                                                                                           | `8080`                       |
 | `METRICS_SERVER_ENABLED` | Enable the optional Prometheus metrics server.                                                                                               | `false`                      |
 | `METRICS_PORT`           | Port for the metrics server.                                                                                                                 | `9090`                       |
+| `HA_ENABLED`             | Enable the Home Assistant notification gate.                                                                                                 | `false`                      |
+| `HA_URL`                 | Base URL of your Home Assistant instance (e.g. `http://homeassistant.local:8123`).                                                          | *empty*                      |
+| `HA_TOKEN`               | Long-lived access token from HA (Profile → Long-Lived Access Tokens).                                                                       | *empty*                      |
+| `HA_GATE_ENTITIES`       | Comma-separated HA entity IDs that must all be `on` to allow notifications. Supports `input_boolean`, `binary_sensor`, and `switch`.        | *empty*                      |
+| `HA_POLL_INTERVAL`       | How often (in seconds) to poll Home Assistant for entity states.                                                                             | `30`                         |
 
 ---
 
@@ -136,6 +142,47 @@ Available metrics:
 | Metric | Type | Description |
 |--------|------|-------------|
 | `flight_alert_flight_notification_totals` | Counter | Total flights that met notification criteria, labeled by `departure_city` |
+
+---
+
+## Home Assistant Gate
+
+The Home Assistant gate lets you control when FlightAlert sends notifications using entity states from your Home Assistant instance. All configured entities must be `on` for a notification to fire — if any are `off`, the notification is suppressed.
+
+Enable with `HA_ENABLED=true` and configure the entities to watch:
+
+```yaml
+environment:
+  HA_ENABLED: "true"
+  HA_URL: "http://homeassistant.local:8123"
+  HA_TOKEN: "<your_long_lived_token>"
+  HA_GATE_ENTITIES: "input_boolean.flightalert_manual,binary_sensor.person_home"
+  HA_POLL_INTERVAL: "30"
+```
+
+FlightAlert polls Home Assistant every `HA_POLL_INTERVAL` seconds and caches the results. If HA is unreachable, notifications proceed normally (fail-open).
+
+### Getting a Long-Lived Access Token
+
+In Home Assistant, go to your **Profile → Long-Lived Access Tokens** and create a new token.
+
+### Supported Entity Types
+
+| Entity type | Example | Active when |
+|---|---|---|
+| `input_boolean` | `input_boolean.flightalert_enabled` | `on` |
+| `binary_sensor` | `binary_sensor.person_home` | `on` |
+| `switch` | `switch.notification_switch` | `on` |
+
+### Example: Presence + Manual Override
+
+A common pattern is two entities: one set by a HA automation (e.g. presence detection or based on location) and one you can flip manually:
+
+```
+HA_GATE_ENTITIES=binary_sensor.person_home,input_boolean.flightalert_manual
+```
+
+Both must be `on` for notifications to send. Leaving home turns off `binary_sensor.person_home` and silences FlightAlert automatically. The manual toggle lets you suppress notifications independently without changing your automations.
 
 ---
 
