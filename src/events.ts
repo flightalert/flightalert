@@ -12,6 +12,8 @@ const QUEUED_FLIGHT = 'queued_flight';
 const NOTIFIED_FLIGHT = 'notified_flight';
 const FAILED_FLIGHT = 'failed_flight';
 
+const GATE_STATE_CHANGED = 'gate_state_changed';
+
 const events = {
     'receiver_setup': RECEIVER_SETUP,
 
@@ -23,6 +25,8 @@ const events = {
     'queued_flight': QUEUED_FLIGHT,
     'notified_flight': NOTIFIED_FLIGHT,
     'failed_flight': FAILED_FLIGHT,
+
+    'gate_state_changed': GATE_STATE_CHANGED,
 }
 
 const emitter = new EventEmitter();
@@ -38,5 +42,6 @@ export {
     QUEUED_FLIGHT,
     NOTIFIED_FLIGHT,
     FAILED_FLIGHT,
+    GATE_STATE_CHANGED,
     events
 }

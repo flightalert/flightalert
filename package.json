@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "hot": "tsx watch src/index.ts",
-    "build": "tsc && tsc-alias && cpy src/notifications/templates/* dist/notifications/templates --flat",
+    "build": "tsc && tsc-alias && cpy src/notifications/templates/* dist/notifications/templates --flat && cpy src/servers/*.ejs dist/servers --flat",
     "start": "node dist/index.js"
   },
   "author": "",
