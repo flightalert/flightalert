@@ -15,6 +15,7 @@ import NotificationManager from './notifications/NotificationManager';
 import { setupWebServer } from './servers/webServer';
 import { setupMetricsServer } from './servers/metricsServer';
 import metrics from './metrics';
+import haGate from './gates/HomeAssistantGate';
 
 dotenv.config();
 await storage.init({
@@ -128,6 +129,7 @@ const init = async () => {
     await setupTemplates();
     await setupReceiverData();
     await ServiceManager.init(process.env.SERVICES);
+    await haGate.init();
     await setupEventListeners();
     await processWithDataFromSocket();
 
