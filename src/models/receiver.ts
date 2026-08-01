@@ -51,7 +51,7 @@ export class Receiver {
             this.receiverData = response.data as IReceiverData;
             return this.receiverData;
     } catch(e) {
-            Logger.error('Failed to get receiver information')
+            Logger.error('Failed to get receiver information from: ' + process.env.RECEIVER_HOST)
             throw e;
         }
     }
@@ -67,7 +67,7 @@ export class Receiver {
             !lat ||
             !lon
         ) {
-            Logger.info('not enough data for distance');
+            Logger.debug('not enough data for distance');
             return null;
         }
 
@@ -102,13 +102,7 @@ export class Receiver {
     }
 
     async calculateDistanceFromReceiver(lat1: number, lon1: number, lat2: number, lon2: number): Promise<number | null> {
-        if(
-            !lat1 ||
-            !lon1 ||
-            !lat2 ||
-            !lon2
-        ) {
-            Logger.info('calc: not enough data for distance');
+        if(!lat1 || !lon1 || !lat2 || !lon2) {
             return null;
         }
 
