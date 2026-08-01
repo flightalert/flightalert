@@ -1,6 +1,6 @@
+import { DateTimeFormatter, ZonedDateTime, ZoneId, ZoneOffset } from '@js-joda/core';
+import '@js-joda/timezone';
 
-
-// Use a string union type for log levels for type-safety and flexibility.
 type LogLevelName = 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
 class Logger {
@@ -18,7 +18,16 @@ class Logger {
         this.minLevel = this.levels[minLevel.toUpperCase() as LogLevelName] || this.levels.INFO;
     }
 
-    // A method to handle the actual logging.
+    private getTimestamp(): string {
+        const tz = process.env.TIMEZONE;
+        if (tz) {
+            return ZonedDateTime.now(ZoneId.of(tz))
+                .format(DateTimeFormatter.ofPattern('yyyy-MM-dd HH:mm:ss'));
+        }
+        return ZonedDateTime.now(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+    }
+
     _log(level: LogLevelName, ...messages: any[]): void {
         if (this.levels[level] >= this.minLevel) {
             const logMethod: (...args: any[]) => void = ({
@@ -29,7 +38,7 @@ class Logger {
                 ERROR: console.error,
             })[level] || console.log;
 
-            logMethod(`[${level}]`, ...messages);
+            logMethod(`[${level}] [${this.getTimestamp()}]`, ...messages);
         }
     }
 
