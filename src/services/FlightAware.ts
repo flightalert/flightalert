@@ -1,6 +1,7 @@
 import storage from 'node-persist';
 import { ChronoUnit, Instant, LocalDateTime } from '@js-joda/core'
 import { IService } from './Service';
+import Logger from '../logger';
 
 export interface IFlightAwareCacheReturn {
     useCache: boolean
@@ -90,18 +91,25 @@ export class FlightAware implements IService {
 
         const pullFromCache = await this.pullFromCacheForFlightAware(flightAwareCache, callsign);
         if(pullFromCache?.useCache) {
+            Logger.debug(`[FlightAware] Cache hit for ${callsign}`);
             return {
-
                 useCache: pullFromCache.useCache,
                 flightAwareFlight: pullFromCache.flightAwareFlight
             };
         }
 
-        const response = await fetch('https://www.flightaware.com/live/flight/' + callsign);
-        const data = await response.text();
+        let data: string;
+        try {
+            const response = await fetch('https://www.flightaware.com/live/flight/' + callsign);
+            data = await response.text();
+        } catch (e: any) {
+            Logger.error(`[FlightAware] HTTP fetch failed for ${callsign}: ` + (e?.message ?? e));
+            return { flightAwareFlight: null, error: e?.message ?? 'fetch failed' };
+        }
 
         const variableMatch = data.match(/var trackpollBootstrap = (\{.*?\});/);
         if(!variableMatch) {
+            Logger.warn(`[FlightAware] Could not parse response for ${callsign} — page structure may have changed`);
             return {
                 flightAwareFlight: null,
                 error: 'No variable match from FlightAware.'
@@ -112,6 +120,7 @@ export class FlightAware implements IService {
         const flightAwareResults = JSON.parse(variableString);
 
         if(!flightAwareResults || !flightAwareResults?.flights) {
+            Logger.warn(`[FlightAware] No flights object in response for ${callsign}`);
             return {
                 error: 'No flightAwareResults.',
                 flightAwareFlight: null,
@@ -120,6 +129,7 @@ export class FlightAware implements IService {
 
         const firstFlight = Object.keys(flightAwareResults.flights)[0] ?? null
         if(!firstFlight) {
+            Logger.debug(`[FlightAware] No flight entries for ${callsign}`);
             return {
                 error: 'No flights from FlightAware.',
                 flightAwareFlight: null,

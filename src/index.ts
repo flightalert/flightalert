@@ -6,7 +6,7 @@ import { jsonrepair } from 'jsonrepair'
 import net from 'net';
 import { processFlight } from './flightQueue';
 import { IService } from './services/Service';
-import eventEmitter, { PROCESSED_FLIGHT, PROCESSING_FLIGHT, RECEIVER_SETUP } from './events';
+import eventEmitter, { PROCESSED_FLIGHT, PROCESSING_FLIGHT, RECEIVER_SETUP, NOTIFIED_FLIGHT, FAILED_FLIGHT } from './events';
 import receiver from './models/receiver';
 import { Aircraft } from './models/aircraft';
 import Logger from './logger';
@@ -37,7 +37,7 @@ const processFlightData = async (
             await processFlight(flight);
         };
     } catch (e: any) {
-        Logger.error(e.message)
+        Logger.error(e)
         throw e;
     }
 }
@@ -81,8 +81,7 @@ const processWithDataFromSocket = async () => {
     });
 
     client.on('close', () => {
-        Logger.info('TCP Socket: Disconnected.');
-        Logger.info('TCP Socket: Setting up connect retry')
+        Logger.info('TCP Socket: Disconnected. Setting up retry...')
         retrying = true;
         if(retries >= maxRetries) {
             Logger.error('TCP Socket: Reached maximum connect retries: ' + maxRetries)
@@ -97,14 +96,35 @@ const processWithDataFromSocket = async () => {
 }
 
 const setupEventListeners = async () => {
+    let messageCount = 0;
+    let notificationCount = 0;
+    let failedCount = 0;
+
     eventEmitter.on(PROCESSING_FLIGHT, (data: Record<string, any>) => {
-        Logger.info('Processing: ' + data?.callsign)
+        messageCount++;
+        Logger.debug('Processing: ' + data?.callsign);
     });
 
     eventEmitter.on(PROCESSED_FLIGHT, async (flight: Aircraft) => {
-        Logger.debug(JSON.stringify(flight.toJson(true), null, 3));
-        Logger.info('Processed: ' + flight.callsign + (flight.notify ? '' : '\n\n'));
+        Logger.trace(JSON.stringify(flight.toJson(true), null, 3));
+        Logger.debug('Processed: ' + flight.callsign);
     });
+
+    eventEmitter.on(NOTIFIED_FLIGHT, () => {
+        notificationCount++;
+    });
+
+    eventEmitter.on(FAILED_FLIGHT, () => {
+        failedCount++;
+    });
+
+    const intervalSeconds = parseInt(process.env.HEARTBEAT_INTERVAL ?? '120');
+    setInterval(() => {
+        Logger.info(`Heartbeat: ${messageCount} messages, ${notificationCount} notified, ${failedCount} failed (last ${intervalSeconds}s)`);
+        messageCount = 0;
+        notificationCount = 0;
+        failedCount = 0;
+    }, intervalSeconds * 1000);
 }
 
 const setupReceiverData = async () => {

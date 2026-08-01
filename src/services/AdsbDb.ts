@@ -87,6 +87,7 @@ export class AdsbDb implements IService {
             /* @ts-ignore */
             return response.data.response as Record<string, any>;
         } catch (e: any) {
+            Logger.error(`[AdsbDb] Failed to get route for ${callsign} (${hex}): ` + (e?.message ?? e));
             return null;
         }
     }
@@ -96,8 +97,8 @@ export class AdsbDb implements IService {
             const response = await axios.get('https://api.adsbdb.com/v0/aircraft/' + hex);
             /* @ts-ignore */
             return response.data.response.aircraft;
-        } catch (e) {
-            Logger.error('Failed to get aircraft information from ADSB DB.');
+        } catch (e: any) {
+            Logger.error(`[AdsbDb] Failed to get aircraft info for ${hex}: ` + (e?.message ?? e));
             throw e;
         }
     }
