@@ -87,6 +87,7 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
                 if(aircraftModel?.callsign) {
                     await cache.set(aircraftModel.callsign, aircraftModel.lastNotified);
                 }
+                eventEmitter.emit(NOTIFIED_FLIGHT, totalNotified);
             }
         } catch (e: any) {
             Logger.error('Failed to notify for ' + aircraftModel.callsign + ': ' + (e?.message ?? e));
@@ -97,8 +98,6 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
 
     totalProcessed++;
     eventEmitter.emit(PROCESSED_FLIGHT, aircraftModel);
-
-    eventEmitter.emit(NOTIFIED_FLIGHT, totalNotified);
 
     // flights.set(callsign, aircraftModel);
     return aircraftModel;
