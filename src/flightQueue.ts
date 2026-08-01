@@ -16,7 +16,7 @@ let totalFailed = 0;
 const queue = new PQueue({ concurrency: 1 });
 
 queue.on('error', error => {
-    Logger.error(error);
+    Logger.error('[Queue]', error);
     totalFailed++;
     eventEmitter.emit(FAILED_FLIGHT, totalFailed);
 });
@@ -81,7 +81,7 @@ const workFlight = async (aircraft: Record<string, any>): Promise<Aircraft> => {
         try {
             const notified = await NotificationManager.notify(aircraftModel);
             if(notified) {
-                Logger.info('Notified: ' + aircraftModel.callsign + '\n\n')
+                Logger.info('Notified: ' + aircraftModel.callsign)
                 totalNotified++;
                 aircraftModel.lastNotified = Instant.now().epochSecond();
                 if(aircraftModel?.callsign) {

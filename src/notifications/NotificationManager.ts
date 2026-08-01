@@ -1,6 +1,7 @@
 import { Aircraft } from '@/models/aircraft';
 import axios from 'axios';
 import Template from './Template';
+import Logger from '@/logger';
 
 class NotificationManager {
     public templates: Record<string, Template> = {};
@@ -37,6 +38,8 @@ class NotificationManager {
             body: renderedBodyTemplate.trim(),
             type: 'info',
         };
+
+        Logger.debug('[Notification] Sending: ' + aircraft.callsign + ' → ' + process.env.APPRISE_API_URL);
 
         await axios.post(
             process.env.APPRISE_API_URL,

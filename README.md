@@ -63,6 +63,7 @@ Additional optional variables are in the [full environment variable reference](#
 - [Prometheus Metrics](#prometheus-metrics) — Prometheus-compatible metrics endpoint
 - [Home Assistant Gate](#home-assistant-gate) — pause notifications based on Home Assistant entity states
 - [Custom Notifications](#custom-notifications) — override the notification message and title templates
+- [Logging](#logging) — log levels, heartbeat summary, and timestamps
 
 ---
 
@@ -90,7 +91,9 @@ Additional optional variables are in the [full environment variable reference](#
 | `SERVICES`               | Comma-separated list of services for retrieving flight source/destination. Valid options: `flightaware`, `adsbdb`.                           | `flightaware`                |
 | `SERVICES_ALWAYS_CHECK`  | Retrieve source/destination for **every** message (`true`), or only when thresholds are met (`false`).                                       | `false`                      |
 | `APPRISE_API_URL`        | Apprise API URL for sending notifications.                                                                                                   | `http://apprise:8000/notify` |
-| `LOG_LEVEL`              | Logging level: `DEBUG` (all messages), `INFO` (only notifications), or `ERROR` (only errors).                                                | `INFO`                       |
+| `LOG_LEVEL`              | Logging verbosity. See [Logging](#logging) for level descriptions.                                                                            | `INFO`                       |
+| `HEARTBEAT_INTERVAL`     | How often (in seconds) to emit a log summary of messages processed and notifications sent.                                                    | `120`                        |
+| `TIMEZONE`               | Timezone for log timestamps (e.g. `America/Chicago`, `Europe/London`). Defaults to UTC.                                                       | *empty*                      |
 | `APP_SERVER_ENABLED`     | Enable the optional web dashboard (EJS + Socket.IO).                                                                                         | `false`                      |
 | `APP_PORT`               | Port for the web dashboard server.                                                                                                           | `8080`                       |
 | `METRICS_SERVER_ENABLED` | Enable the optional Prometheus metrics server.                                                                                               | `false`                      |
@@ -378,6 +381,69 @@ The title receives the same `flight` object plus an `env` key (`development` / `
 ```
 
 </details>
+
+---
+
+## Logging
+
+All log lines include a level and timestamp:
+
+```
+[INFO] [2026-06-01T14:32:01Z] TCP Socket: listening on port 30047
+[INFO] [2026-06-01T14:34:01Z] Heartbeat: 298 messages, 1 notified, 0 failed (last 120s)
+[INFO] [2026-06-01T14:34:23Z] Notified: AAL123
+[ERROR] [2026-06-01T14:35:45Z] Failed to notify for DAL456: connection refused
+```
+
+### Log Levels
+
+Set with the `LOG_LEVEL` environment variable.
+
+| Level | What you see |
+|-------|-------------|
+| `TRACE` | Everything in DEBUG plus a full JSON dump of each processed aircraft |
+| `DEBUG` | Per-message `Processing`/`Processed` logs for every received aircraft |
+| `INFO` | Heartbeat summary, successful notifications, connection events, and errors *(default)* |
+| `WARN` | Degraded-state warnings (e.g. FlightAware parse failures, HA entity fetch errors) and errors |
+| `ERROR` | Only hard errors |
+
+At the default `INFO` level, logs are quiet enough to spot errors immediately while still confirming the system is alive via the heartbeat.
+
+### Heartbeat
+
+Every `HEARTBEAT_INTERVAL` seconds (default `120`), FlightAlert logs a summary:
+
+```
+[INFO] [2026-06-01T14:34:01Z] Heartbeat: 298 messages, 1 notified, 0 failed (last 120s)
+```
+
+This tells you how many aircraft messages were processed, how many triggered notifications, and how many notification failures occurred in the last interval — without logging every individual aircraft.
+
+### Timestamps
+
+Timestamps default to UTC. Set `TIMEZONE` to a [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to use local time instead:
+
+```yaml
+environment:
+  TIMEZONE: "America/Chicago"
+```
+
+```
+[INFO] [2026-06-01 09:34:01] Heartbeat: 298 messages, 1 notified, 0 failed (last 120s)
+```
+
+### Viewing Logs
+
+```bash
+# Follow live logs
+docker logs -f flightalert
+
+# Show only errors
+docker logs flightalert 2>&1 | grep '\[ERROR\]'
+
+# Show logs from the last hour
+docker logs --since 1h flightalert
+```
 
 ---
 
