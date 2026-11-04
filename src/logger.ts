@@ -43,6 +43,10 @@ class Logger {
     }
 
     // Public methods for each log level.
+    isEnabled(level: LogLevelName): boolean {
+        return this.levels[level] >= this.minLevel;
+    }
+
     trace(...messages: any[]): void {
         this._log('TRACE', ...messages);
     }

@@ -61,13 +61,23 @@ export class Receiver {
             throw Error('Receiver data not initialized.')
         }
 
+        const distance = this.distanceTo(lat, lon);
+        if(distance === null) {
+            Logger.debug('not enough data for distance');
+        }
+        return distance;
+    }
+
+    // Synchronous, for hot paths that cannot await. Null when it cannot be computed
+    // (receiver not initialized, or missing coordinates).
+    distanceTo(lat: number, lon: number): number | null {
         if(
+            !this.initialized ||
             !this.receiverData?.lat ||
             !this.receiverData?.lon ||
             !lat ||
             !lon
         ) {
-            Logger.debug('not enough data for distance');
             return null;
         }
 
@@ -76,7 +86,7 @@ export class Receiver {
             this.receiverData.lon,
             lat,
             lon
-        )
+        );
     }
 
     async calculateDirectionTo(lat: number, lon: number): Promise<string | null> {
@@ -101,7 +111,7 @@ export class Receiver {
         )
     }
 
-    async calculateDistanceFromReceiver(lat1: number, lon1: number, lat2: number, lon2: number): Promise<number | null> {
+    calculateDistanceFromReceiver(lat1: number, lon1: number, lat2: number, lon2: number): number | null {
         if(!lat1 || !lon1 || !lat2 || !lon2) {
             return null;
         }
@@ -130,9 +140,13 @@ export class Receiver {
             return null;
         }
 
-        const dLon = lon2 - lon1;
-        const y = Math.sin(dLon) * Math.cos(lat2);
-        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+        // Math.sin/cos take radians; the coordinates are in degrees
+        const toRad = (deg: number) => deg * Math.PI / 180;
+        const phi1 = toRad(lat1);
+        const phi2 = toRad(lat2);
+        const dLon = toRad(lon2 - lon1);
+        const y = Math.sin(dLon) * Math.cos(phi2);
+        const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLon);
         let bearing = Math.atan2(y, x) * 180 / Math.PI;
         bearing = (bearing + 360) % 360; // Normalize to 0-360 range
 

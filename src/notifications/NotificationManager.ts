@@ -47,7 +47,10 @@ class NotificationManager {
             {
                 'headers': {
                     'Content-Type': 'application/json'
-                }
+                },
+                // A hung Apprise call would otherwise stall the serialized flight queue.
+                // Generous, because Apprise can be slow when fanning out to several URLs.
+                'timeout': 30_000
             }
         );
 

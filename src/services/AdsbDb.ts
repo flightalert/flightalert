@@ -83,7 +83,7 @@ export class AdsbDb implements IService {
 
     async getAircraftInfoAndRouteFromAdsbDB(callsign: string, hex: string,): Promise<Record<string, any> | null> {
         try {
-            const response = await axios.get('https://api.adsbdb.com/v0/aircraft/' + hex + '?callsign=' + callsign);
+            const response = await axios.get('https://api.adsbdb.com/v0/aircraft/' + hex + '?callsign=' + callsign, { timeout: 10_000 });
             /* @ts-ignore */
             return response.data.response as Record<string, any>;
         } catch (e: any) {
@@ -94,7 +94,7 @@ export class AdsbDb implements IService {
 
     async getAircraftInfo(hex: string) {
         try {
-            const response = await axios.get('https://api.adsbdb.com/v0/aircraft/' + hex);
+            const response = await axios.get('https://api.adsbdb.com/v0/aircraft/' + hex, { timeout: 10_000 });
             /* @ts-ignore */
             return response.data.response.aircraft;
         } catch (e: any) {
