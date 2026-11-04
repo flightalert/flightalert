@@ -19,7 +19,7 @@ Run one with: `npx tsx scratch-tests/<file>.mts`
 | File | Covers | Status |
 |---|---|---|
 | t1 | parser, FlightAware cache, old gate | **Stale**: gate section asserts the removed `failMode`/`staleAfterMs`; type errors |
-| t2 | probe: FlightAware backoff idea | Probe only |
+| t2 | probe: old fail-open gate with a stale `off` and a fresh `unavailable` | Probe only; stale after the gate simplification |
 | t3 | gate isOpen/poll, FlightAware, queue | **Stale**: old gate rules and queue-cap assertions |
 | t3b | t3 minus old gate sections | FlightAware backoff + queue coalescing/cap (valid) |
 | t4 | probe reproducing review findings | Probe only |
