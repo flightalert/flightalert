@@ -87,7 +87,13 @@ export class AdsbDb implements IService {
             /* @ts-ignore */
             return response.data.response as Record<string, any>;
         } catch (e: any) {
-            Logger.error(`[AdsbDb] Failed to get route for ${callsign} (${hex}): ` + (e?.message ?? e));
+            const message = `[AdsbDb] Failed to get route for ${callsign} (${hex}): ` + (e?.message ?? e);
+            // 404 just means adsbdb has no record of this aircraft; that is routine
+            if (e?.response?.status === 404) {
+                Logger.debug(message);
+            } else {
+                Logger.error(message);
+            }
             return null;
         }
     }
