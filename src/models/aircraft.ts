@@ -185,6 +185,27 @@ export class Aircraft {
         return this.notify;
     }
 
+    // Range criteria shared with the queue, which uses them to decide which of two
+    // waiting messages for the same aircraft to keep.
+    static isTooFar(distanceFromReceiver: number | null): boolean {
+        return distanceFromReceiver === null ||
+            !Number.isFinite(distanceFromReceiver) ||
+            distanceFromReceiver > Number(process.env.NOTIFY_DISTANCE ?? 0.5);
+    }
+
+    // readsb reports alt_baro as a number, or the string "ground" for aircraft on the
+    // ground. Some records (e.g. MLAT) lack alt_baro but carry alt_geom, so that is used
+    // when alt_baro is absent. A missing or non-numeric altitude (including "ground")
+    // never qualifies.
+    static isTooHigh(altBaro: any, altGeom?: any): boolean {
+        const isMissing = (v: any) => v === null || v === undefined || v === '';
+        const reported = isMissing(altBaro) ? altGeom : altBaro;
+        if (isMissing(reported)) return true;
+        const altitude = Number(reported);
+        return !Number.isFinite(altitude) ||
+            altitude > Number(process.env.NOTIFY_ALTITUDE ?? 3000);
+    }
+
     async calculateIfShouldNotify(): Promise<boolean> {
         let notifyReasons = [];
 
@@ -201,17 +222,11 @@ export class Aircraft {
             }
         }
 
-        if(
-            this.distanceFromReceiver === null ||
-            this.distanceFromReceiver > (process.env.NOTIFY_DISTANCE ?? 0.5)
-        ){
+        if(Aircraft.isTooFar(this.distanceFromReceiver)){
             notifyReasons.push('Too far away');
         }
 
-        if(
-            this.alt_baro === null ||
-            Number(this.alt_baro) > (process.env.NOTIFY_ALTITUDE ?? 3000)
-        ) {
+        if(Aircraft.isTooHigh(this.alt_baro, this.alt_geom)) {
             notifyReasons.push('Too high');
         }
 

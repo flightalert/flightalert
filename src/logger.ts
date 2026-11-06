@@ -15,7 +15,8 @@ class Logger {
     minLevel: number;
 
     constructor(minLevel: LogLevelName = 'INFO') {
-        this.minLevel = this.levels[minLevel.toUpperCase() as LogLevelName] || this.levels.INFO;
+        // TRACE is 0, so test for undefined rather than falsy
+        this.minLevel = this.levels[minLevel.toUpperCase() as LogLevelName] ?? this.levels.INFO;
     }
 
     private getTimestamp(): string {
@@ -31,7 +32,8 @@ class Logger {
     _log(level: LogLevelName, ...messages: any[]): void {
         if (this.levels[level] >= this.minLevel) {
             const logMethod: (...args: any[]) => void = ({
-                TRACE: console.trace,
+                // console.trace would append a stack trace to every line
+                TRACE: console.debug,
                 DEBUG: console.debug,
                 INFO: console.info,
                 WARN: console.warn,
@@ -43,6 +45,10 @@ class Logger {
     }
 
     // Public methods for each log level.
+    isEnabled(level: LogLevelName): boolean {
+        return this.levels[level] >= this.minLevel;
+    }
+
     trace(...messages: any[]): void {
         this._log('TRACE', ...messages);
     }

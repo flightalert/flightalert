@@ -2,7 +2,15 @@ import axios from 'axios';
 import Logger from '../logger';
 import eventEmitter, { GATE_STATE_CHANGED } from '../events';
 
+// The gate is open unless Home Assistant has reported an entity as 'off' recently.
+// An 'off' reading older than this is ignored (HA unreachable, bad token, etc.), so a
+// problem with HA can never leave notifications suppressed indefinitely.
+// Keep this well above HA_POLL_INTERVAL (default 30s).
+const STALE_AFTER_MS = 5 * 60 * 1000;
+
 class HomeAssistantGate {
+    private static readonly REQUEST_TIMEOUT_MS = 5000;
+
     public enabled: boolean = false;
     public entityIds: string[] = [];
     public haUrl: string = '';
@@ -10,6 +18,9 @@ class HomeAssistantGate {
     public pollIntervalMs: number = 30_000;
     public entityStates: Map<string, string> = new Map();
     public lastFetched: number | null = null;
+    // Per-entity time of last successful fetch (epoch ms)
+    public entityFetchedAt: Map<string, number> = new Map();
+    private lastFailureLog: Map<string, { signature: string, at: number }> = new Map();
     public pollTimer: ReturnType<typeof setInterval> | null = null;
     public lastEmittedOpen: boolean | null = null;
 
@@ -33,6 +44,9 @@ class HomeAssistantGate {
 
         this.pollTimer = setInterval(() => this.poll(), this.pollIntervalMs);
         Logger.info(`[HA Gate] Initialized with ${this.entityIds.length} ${this.entityIds.length === 1 ? 'entity' : 'entities'}, polling every ${this.pollIntervalMs / 1000}s`);
+        if (this.lastFetched === null) {
+            Logger.error('[HA Gate] No entity state could be read on startup; notifications stay enabled until Home Assistant responds');
+        }
     }
 
     private parseConfig(): void {
@@ -56,10 +70,11 @@ class HomeAssistantGate {
             const entityId = this.entityIds[index];
             if (result.status === 'fulfilled' && result.value !== null) {
                 this.entityStates.set(entityId, result.value);
+                this.entityFetchedAt.set(entityId, Date.now());
                 Logger.debug(`[HA Gate] Poll: ${entityId}=${result.value}`);
                 anySuccess = true;
             }
-            // On failure, keep the existing state value — stale is better than lost
+            // On failure keep the last value; isOpen() ignores an 'off' once it is stale
         });
 
         if (anySuccess) {
@@ -80,16 +95,55 @@ class HomeAssistantGate {
                 `${this.haUrl}/api/states/${entityId}`,
                 {
                     headers: { Authorization: `Bearer ${this.haToken}` },
-                    timeout: 5000,
+                    timeout: HomeAssistantGate.REQUEST_TIMEOUT_MS,
                 }
             );
 
-            const data = response.data as Record<string, any>
+            const state = (response.data as Record<string, any> | undefined)?.state;
 
-            return data.state as string;
+            // Not a usable reading: a malformed response (e.g. a proxy login page), or HA
+            // saying it cannot tell. Treat like an unreachable HA so the last real reading
+            // is neither overwritten nor refreshed.
+            if (typeof state !== 'string' || state === '' || state === 'unavailable' || state === 'unknown') {
+                Logger.debug(`[HA Gate] Ignoring unusable state for ${entityId}: ${JSON.stringify(state)}`);
+                return null;
+            }
+
+            return state;
         } catch (e: any) {
-            Logger.warn(`[HA Gate] Could not fetch state for ${entityId}: ${e?.message ?? e}`);
+            this.logFetchFailure(entityId, e);
             return null;
+        }
+    }
+
+    // Auth failures are called out explicitly; repeats are throttled so a bad token
+    // does not fill the log every poll.
+    private logFetchFailure(entityId: string, e: any): void {
+        const status: number | undefined = e?.response?.status;
+        let signature: string;
+        let message: string;
+
+        if (status === 401 || status === 403) {
+            signature = `http-${status}`;
+            message = `Home Assistant rejected HA_TOKEN (HTTP ${status}) fetching ${entityId}. Create a new long-lived token; the gate cannot read entity states until then`;
+        } else if (status === 404) {
+            signature = 'http-404';
+            message = `Entity ${entityId} not found in Home Assistant (HTTP 404). Check HA_GATE_ENTITIES`;
+        } else if (status) {
+            signature = `http-${status}`;
+            message = `Home Assistant returned HTTP ${status} fetching ${entityId}`;
+        } else {
+            signature = e?.code ?? 'error';
+            message = `Could not reach Home Assistant at ${this.haUrl} for ${entityId}: ${e?.message ?? e}`;
+        }
+
+        const previous = this.lastFailureLog.get(entityId);
+        const now = Date.now();
+        if (!previous || previous.signature !== signature || now - previous.at > 10 * 60 * 1000) {
+            Logger.warn(`[HA Gate] ${message}`);
+            this.lastFailureLog.set(entityId, { signature, at: now });
+        } else {
+            Logger.debug(`[HA Gate] ${message}`);
         }
     }
 
@@ -97,18 +151,18 @@ class HomeAssistantGate {
         return this.enabled;
     }
 
+    // Open unless HA has recently reported an entity as 'off'. Anything else (never
+    // fetched, unreachable, unusable state, a stale reading) leaves notifications on.
     isOpen(): boolean {
         if (!this.enabled || this.entityIds.length === 0) return true;
-        // Never successfully polled — fail open so startup doesn't suppress notifications
-        if (this.lastFetched === null) return true;
 
-        for (const entityId of this.entityIds) {
-            const state = this.entityStates.get(entityId);
-            // Entity never fetched — fail open
-            if (state === undefined) return true;
-            if (state !== 'on') return false;
-        }
-        return true;
+        const now = Date.now();
+        return !this.entityIds.some(entityId => {
+            const fetchedAt = this.entityFetchedAt.get(entityId);
+            return this.entityStates.get(entityId) === 'off' &&
+                fetchedAt !== undefined &&
+                now - fetchedAt <= STALE_AFTER_MS;
+        });
     }
 
     destroy(): void {

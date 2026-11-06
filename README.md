@@ -83,7 +83,7 @@ Additional optional variables are in the [full environment variable reference](#
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | `APP_ENV`                | Application environment (`development` / `production`).                                                                                      | `production`                 |
 | `NOTIFY_DISTANCE`        | Distance (nautical miles) from receiver a plane must be within to trigger a notification.                                                    | `0.5`                        |
-| `NOTIFY_ALTITUDE`        | Altitude (feet) a plane must be under to trigger a notification.                                                                             | `3000`                       |
+| `NOTIFY_ALTITUDE`        | Altitude (feet) a plane must be under to trigger a notification. `ground` or missing altitudes never trigger.                              | `3000`                       |
 | `RECEIVER_PORT`          | Port for the receiver (Piaware/Ultrafeeder web port). Leave empty if using a reverse proxy.                                                  | *empty*                      |
 | `ULTRAFEEDER_PORT`       | ADS-B Ultrafeeder port for incoming flight data (JSON position output).                                                                      | `30047`                      |
 | `SOCKET_RETRY_INTERVAL`  | Interval (ms) to wait before retrying a socket connection after disconnect.                                                                  | `15000`                      |
@@ -101,8 +101,9 @@ Additional optional variables are in the [full environment variable reference](#
 | `HA_ENABLED`             | Enable the Home Assistant notification gate.                                                                                                 | `false`                      |
 | `HA_URL`                 | Base URL of your Home Assistant instance (e.g. `http://homeassistant.local:8123`).                                                          | *empty*                      |
 | `HA_TOKEN`               | Long-lived access token from HA (Profile → Long-Lived Access Tokens).                                                                       | *empty*                      |
-| `HA_GATE_ENTITIES`       | Comma-separated HA entity IDs that must all be `on` to allow notifications. Supports `input_boolean`, `binary_sensor`, and `switch`.        | *empty*                      |
+| `HA_GATE_ENTITIES`       | Comma-separated HA entity IDs; notifications are suppressed while any is `off`. Supports `input_boolean`, `binary_sensor`, and `switch`.      | *empty*                      |
 | `HA_POLL_INTERVAL`       | How often (in seconds) to poll Home Assistant for entity states.                                                                             | `30`                         |
+| `QUEUE_MAX_SIZE`         | Maximum flight messages waiting to be processed; extra out-of-range messages are dropped and counted. Possible alerts are always accepted. | `500`                        |
 
 ---
 
@@ -145,12 +146,14 @@ Available metrics:
 | Metric | Type | Description |
 |--------|------|-------------|
 | `flight_alert_flight_notification_totals` | Counter | Total flights that met notification criteria, labeled by `departure_city` |
+| `flight_alert_queue_dropped_total` | Counter | Flight messages dropped because the processing queue was full |
+| `process_*`, `nodejs_*` | various | Default Node.js metrics from prom-client: heap, RSS, CPU, GC and event-loop lag |
 
 ---
 
 ## Home Assistant Gate
 
-The Home Assistant gate lets you control when FlightAlert sends notifications using entity states from your Home Assistant instance. All configured entities must be `on` for a notification to fire — if any are `off`, the notification is suppressed.
+The Home Assistant gate lets you control when FlightAlert sends notifications using entity states from your Home Assistant instance. Notifications are sent unless one of the configured entities is `off` — if any are `off`, the notification is suppressed.
 
 Enable with `HA_ENABLED=true` and configure the entities to watch:
 
@@ -163,7 +166,7 @@ environment:
   HA_POLL_INTERVAL: "30"
 ```
 
-FlightAlert polls Home Assistant every `HA_POLL_INTERVAL` seconds and caches the results. If HA is unreachable, notifications proceed normally (fail-open).
+FlightAlert polls Home Assistant every `HA_POLL_INTERVAL` seconds. The gate is open by default and closes only while an entity is reported as `off`. If Home Assistant is unreachable, rejects the token, or returns a state that can't be read (`unavailable`, `unknown`), notifications proceed normally (fail-open). An `off` reading that hasn't been refreshed for 5 minutes is ignored, so a Home Assistant outage can't leave notifications suppressed. Authentication failures (HTTP 401/403) are logged explicitly so a bad `HA_TOKEN` is easy to spot.
 
 ### Getting a Long-Lived Access Token
 
@@ -185,7 +188,7 @@ A common pattern is two entities: one set by a HA automation (e.g. presence dete
 HA_GATE_ENTITIES=binary_sensor.person_home,input_boolean.flightalert_manual
 ```
 
-Both must be `on` for notifications to send. Leaving home turns off `binary_sensor.person_home` and silences FlightAlert automatically. The manual toggle lets you suppress notifications independently without changing your automations.
+Notifications are suppressed whenever either one is `off`. Leaving home turns off `binary_sensor.person_home` and silences FlightAlert automatically. The manual toggle lets you suppress notifications independently without changing your automations.
 
 ---
 
