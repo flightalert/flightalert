@@ -11,8 +11,8 @@ class Metrics {
     }
 
     async init() {
-        // const register = this.register;
-        // client.collectDefaultMetrics({ register });
+        // Heap, RSS, GC and event-loop metrics
+        client.collectDefaultMetrics({ register: this.register });
 
         // await this.setMetricsFromCache();
     }
@@ -26,6 +26,14 @@ class Metrics {
         });
 
         this.registerMetric('flight_alert_flight_notification_totals', flightNotificationCounter)
+
+        const queueDroppedCounter = new Counter({
+            name: 'flight_alert_queue_dropped_total',
+            help: 'Total flight messages dropped because the processing queue was at capacity',
+            registers: [this.register]
+        });
+
+        this.registerMetric('flight_alert_queue_dropped_total', queueDroppedCounter)
     }
 
     // async setMetricsFromCache() {

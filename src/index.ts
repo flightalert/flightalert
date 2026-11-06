@@ -2,9 +2,9 @@ import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import * as dotenv from 'dotenv';
 import storage from 'node-persist';
-import { jsonrepair } from 'jsonrepair'
 import net from 'net';
-import { processFlight } from './flightQueue';
+import { NdjsonParser } from './ndjson';
+import { processFlight, takeDroppedCount } from './flightQueue';
 import { IService } from './services/Service';
 import eventEmitter, { PROCESSED_FLIGHT, PROCESSING_FLIGHT, RECEIVER_SETUP, NOTIFIED_FLIGHT, FAILED_FLIGHT } from './events';
 import receiver from './models/receiver';
@@ -21,6 +21,8 @@ dotenv.config();
 await storage.init({
     dir: './.my-storage',
     ttl: true,
+    // The sweep reads every stored file; entries are small and TTL-bound, so sweep rarely
+    expiredInterval: 10 * 60 * 1000,
     forgiveParseErrors: true,
 })
 await metrics.init();
@@ -60,22 +62,13 @@ const processWithDataFromSocket = async () => {
         retries = 0;
     });
 
+    // One parser per connection so a partial line never leaks across reconnects
+    const parser = new NdjsonParser();
+
     client.on('data', async (data) => {
         try {
-            const repaired = jsonrepair(data.toString());
-            const repairedJson = JSON.parse(repaired);
-
-            let flights: Array<Record<string, any>> = [];
-            if(! Array.isArray(repairedJson)) {
-                flights = [repairedJson];
-            }
-
-            await processFlightData(
-                flights
-            );
-
+            await processFlightData(parser.push(data));
         } catch (e: any) {
-            console.log(data.toString());
             Logger.error(e);
         }
     });
@@ -106,7 +99,10 @@ const setupEventListeners = async () => {
     });
 
     eventEmitter.on(PROCESSED_FLIGHT, async (flight: Aircraft) => {
-        Logger.trace(JSON.stringify(flight.toJson(true), null, 3));
+        // Serializing is costly and runs per message; skip it unless TRACE is on
+        if (Logger.isEnabled('TRACE')) {
+            Logger.trace(JSON.stringify(flight.toJson(true), null, 3));
+        }
         Logger.debug('Processed: ' + flight.callsign);
     });
 
@@ -120,7 +116,8 @@ const setupEventListeners = async () => {
 
     const intervalSeconds = parseInt(process.env.HEARTBEAT_INTERVAL ?? '120');
     setInterval(() => {
-        Logger.info(`Heartbeat: ${messageCount} messages, ${notificationCount} notified, ${failedCount} failed (last ${intervalSeconds}s)`);
+        const dropped = takeDroppedCount();
+        Logger.info(`Heartbeat: ${messageCount} messages, ${notificationCount} notified, ${failedCount} failed${dropped ? `, ${dropped} dropped (queue full)` : ''} (last ${intervalSeconds}s)`);
         messageCount = 0;
         notificationCount = 0;
         failedCount = 0;
